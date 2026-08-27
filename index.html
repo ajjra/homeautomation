@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJJRA Smart Home</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#eef5f1;
+ color:#17221c
+}
+header{
+ background:#087f5b;
+ color:#fff;
+ padding:20px;
+ text-align:center;
+ position:sticky;
+ top:0;
+ z-index:20
+}
+header h1{margin:0;font-size:25px}
+header p{margin:6px 0 0}
+.container{max-width:950px;margin:auto;padding:15px}
+.card{
+ background:#fff;
+ border-radius:18px;
+ padding:18px;
+ margin-bottom:15px;
+ box-shadow:0 4px 15px #0001
+}
+input,select{
+ width:100%;
+ padding:13px;
+ border:1px solid #ccc;
+ border-radius:10px;
+ margin:5px 0
+}
+button{
+ border:0;
+ border-radius:10px;
+ padding:12px;
+ cursor:pointer
+}
+.connect{
+ width:100%;
+ background:#087f5b;
+ color:white
+}
+.status{margin-top:10px;font-weight:bold}
+.modes{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:8px
+}
+.mode{background:#e7eee9;width:100%}
+.mode.active{background:#087f5b;color:white}
+.alloff{
+ width:100%;
+ background:#c92a2a;
+ color:white;
+ margin-top:10px;
+ font-size:17px
+}
+.room{
+ background:#f6f8f7;
+ border-radius:15px;
+ padding:15px;
+ margin-top:12px
+}
+.room h2{margin-top:0}
+.devices{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:10px
+}
+.device{
+ background:white;
+ border-radius:13px;
+ padding:15px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center
+}
+.icon{font-size:25px}
+.name{font-weight:bold}
+.state{font-size:12px;margin-top:5px}
+.toggle{
+ width:55px;
+ height:30px;
+ border-radius:20px;
+ background:#aaa;
+ position:relative;
+ padding:0
+}
+.toggle:after{
+ content:"";
+ position:absolute;
+ width:22px;
+ height:22px;
+ background:#fff;
+ border-radius:50%;
+ left:4px;
+ top:4px;
+ transition:.2s
+}
+.toggle.on{background:#087f5b}
+.toggle.on:after{left:29px}
+.motorBox{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:10px
+}
+.motorBtn{background:#087f5b;color:white}
+.tank{
+ height:30px;
+ background:#ddd;
+ border-radius:20px;
+ overflow:hidden;
+ margin:10px 0
+}
+.fill{
+ height:100%;
+ width:0%;
+ background:#159c76;
+ transition:.3s
+}
+.timer{
+ display:flex;
+ justify-content:space-between;
+ padding:10px;
+ background:#f4f7f5;
+ margin-top:8px;
+ border-radius:10px
+}
+@media(max-width:600px){
+ .devices{grid-template-columns:1fr}
+ .modes{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🏠 AJJRA SMART HOME</h1>
+<p>6 Bedroom • Full House Automation</p>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h3>📡 NodeMCU Controller</h3>
+
+<input id="ip"
+placeholder="Example: 192.168.1.100">
+
+<button class="connect" onclick="connectNode()">
+Connect
+</button>
+
+<div id="connection" class="status">
+🔴 Controller Offline
+</div>
+</div>
+
+<div class="card">
+
+<h3>🏠 Home Modes</h3>
+
+<div class="modes">
+
+<button class="mode active"
+onclick="setMode(this,'HOME')">
+🏠 HOME
+</button>
+
+<button class="mode"
+onclick="setMode(this,'NIGHT')">
+🌙 NIGHT
+</button>
+
+<button class="mode"
+onclick="setMode(this,'AWAY')">
+🚶 AWAY
+</button>
+
+</div>
+
+<button class="alloff"
+onclick="allOff()">
+🔴 ALL DEVICES OFF
+</button>
+
+</div>
+
+<div id="rooms"></div>
+
+<div class="card">
+
+<h2>💧 Water Motor</h2>
+
+<div class="motorBox">
+
+<div>
+<div id="motorState">⚫ OFF</div>
+<div>Mode: <b id="motorMode">MANUAL</b></div>
+</div>
+
+<button class="motorBtn"
+onclick="toggleMotor()">
+Motor ON/OFF
+</button>
+
+</div>
+
+<h3>🛢️ Tank Level</h3>
+
+<div class="tank">
+<div id="tankFill" class="fill"></div>
+</div>
+
+<b id="tankText">0%</b>
+
+</div>
+
+<div class="card">
+
+<h3>⏰ Timer</h3>
+
+<select id="timerDevice">
+<option value="r1d1">Bedroom 1 Light</option>
+<option value="r1d3">Bedroom 1 Fan</option>
+<option value="r2d1">Bedroom 2 Light</option>
+<option value="r3d1">Bedroom 3 Light</option>
+<option value="r4d1">Bedroom 4 Light</option>
+<option value="r5d1">Bedroom 5 Light</option>
+<option value="r6d1">Bedroom 6 Light</option>
+<option value="motor">Water Motor</option>
+</select>
+
+<input id="timerTime" type="time">
+
+<button
+class="connect"
+onclick="addTimer()">
+Add Timer
+</button>
+
+<div id="timerList"></div>
+
+</div>
+
+<div class="card">
+
+<h3>📊 System Status</h3>
+
+<div id="system">
+Controller: 🔴 Offline
+</div>
+
+<div id="lastUpdate">
+Last update: -
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let nodeIP="";
+let connected=false;
+let motor=false;
+let timers=[];
+let states={};
+
+const rooms=6;
+const devicesPerRoom=5;
+
+
+/* CREATE DEVICES */
+
+function createRooms(){
+
+ const container=
+ document.getElementById("rooms");
+
+ for(let r=1;r<=rooms;r++){
+
+   let html=`
+   <div class="card room">
+
+   <h2>🛏️ Bedroom ${r}</h2>
+
+   <div class="devices">
+
+   ${makeDevice(r,1,"💡","Light 1")}
+   ${makeDevice(r,2,"💡","Light 2")}
+   ${makeDevice(r,3,"🌀","Fan")}
+   ${makeDevice(r,4,"❄️","AC")}
+   ${makeDevice(r,5,"🔌","Socket")}
+
+   </div>
+   </div>
+   `;
+
+   container.innerHTML+=html;
+ }
+}
+
+
+function makeDevice(room,id,icon,name){
+
+ const key=`r${room}d${id}`;
+
+ states[key]=false;
+
+ return `
+ <div class="device">
+
+ <div>
+ <span class="icon">${icon}</span>
+
+ <div class="name">${name}</div>
+
+ <div
+ id="state-${key}"
+ class="state">
+ ⚫ OFF
+ </div>
+ </div>
+
+ <button
+ id="toggle-${key}"
+ class="toggle"
+ onclick="toggleDevice('${key}')">
+ </button>
+
+ </div>
+ `;
+}
+
+
+/* CONNECT */
+
+function connectNode(){
+
+ nodeIP=
+ document.getElementById("ip")
+ .value.trim();
+
+ if(!nodeIP){
+   alert("NodeMCU IP address നൽകുക");
+   return;
+ }
+
+ fetch(`http://${nodeIP}/status`,{
+   method:"GET"
+ })
+
+ .then(r=>r.json())
+
+ .then(data=>{
+
+   connected=true;
+
+   document.getElementById("connection")
+   .innerHTML=
+   "🟢 NodeMCU Connected";
+
+   document.getElementById("system")
+   .innerHTML=
+   "Controller: 🟢 Online";
+
+   updateFromNode(data);
+
+ })
+
+ .catch(()=>{
+
+   connected=false;
+
+   document.getElementById("connection")
+   .innerHTML=
+   "🔴 Connection Failed";
+
+ });
+}
+
+
+/* DEVICE */
+
+function toggleDevice(key){
+
+ if(!nodeIP){
+   alert("ആദ്യം NodeMCU connect ചെയ്യുക");
+   return;
+ }
+
+ let newState=!states[key];
+
+ let parts=
+ key.match(/r(\d+)d(\d+)/);
+
+ let room=parseInt(parts[1]);
+ let device=parseInt(parts[2]);
+
+ fetch(
+  `http://${nodeIP}/device?room=${room}&device=${device}&state=${newState?1:0}`
+ )
+
+ .then(r=>r.json())
+
+ .then(data=>{
+
+   states[key]=newState;
+
+   updateDevice(key,newState);
+
+ })
+
+ .catch(()=>{
+   alert("NodeMCU connection lost");
+ });
+
+}
+
+
+function updateDevice(key,state){
+
+ const button=
+ document.getElementById(
+   "toggle-"+key
+ );
+
+ const label=
+ document.getElementById(
+   "state-"+key
+ );
+
+ if(!button||!label)return;
+
+ if(state){
+
+   button.classList.add("on");
+   label.innerHTML="🟢 ON";
+
+ }else{
+
+   button.classList.remove("on");
+   label.innerHTML="⚫ OFF";
+ }
+}
+
+
+/* ALL OFF */
+
+function allOff(){
+
+ if(!nodeIP){
+   alert("NodeMCU connect ചെയ്യുക");
+   return;
+ }
+
+ fetch(`http://${nodeIP}/alloff`)
+ .then(r=>r.json())
+ .then(()=>{
+
+   Object.keys(states).forEach(key=>{
+     states[key]=false;
+     updateDevice(key,false);
+   });
+
+   motor=false;
+
+   document.getElementById("motorState")
+   .innerHTML="⚫ OFF";
+
+ });
+}
+
+
+/* MOTOR */
+
+function toggleMotor(){
+
+ if(!nodeIP){
+   alert("NodeMCU connect ചെയ്യുക");
+   return;
+ }
+
+ let newState=!motor;
+
+ fetch(
+  `http://${nodeIP}/motor?state=${newState?1:0}`
+ )
+ .then(r=>r.json())
+ .then(()=>{
+
+   motor=newState;
+
+   document.getElementById("motorState")
+   .innerHTML=
+   motor?"🟢 ON":"⚫ OFF";
+
+ });
+}
+
+
+/* MODE */
+
+function setMode(button,name){
+
+ document
+ .querySelectorAll(".mode")
+ .forEach(b=>b.classList.remove("active"));
+
+ button.classList.add("active");
+
+ if(name==="AWAY"){
+   allOff();
+ }
+
+}
+
+
+/* NODE STATUS */
+
+function updateFromNode(data){
+
+ if(data.devices){
+
+   Object.keys(data.devices).forEach(key=>{
+
+     if(states.hasOwnProperty(key)){
+
+       states[key]=
+       Boolean(data.devices[key]);
+
+       updateDevice(
+         key,
+         states[key]
+       );
+
+     }
+
+   });
+
+ }
+
+ if(data.motor!==undefined){
+
+   motor=Boolean(data.motor);
+
+   document.getElementById("motorState")
+   .innerHTML=
+   motor?"🟢 ON":"⚫ OFF";
+ }
+
+ if(data.tank!==undefined){
+
+   updateTank(
+     Number(data.tank)
+   );
+
+ }
+
+ document.getElementById("lastUpdate")
+ .innerHTML=
+ "Last update: "+
+ new Date().toLocaleTimeString();
+}
+
+
+/* TANK */
+
+function updateTank(level){
+
+ level=Math.max(0,Math.min(100,level));
+
+ document.getElementById("tankFill")
+ .style.width=level+"%";
+
+ document.getElementById("tankText")
+ .innerHTML=
+ "Tank Level: "+level+"%";
+}
+
+
+/* TIMER */
+
+function addTimer(){
+
+ let device=
+ document.getElementById("timerDevice").value;
+
+ let time=
+ document.getElementById("timerTime").value;
+
+ if(!time){
+   alert("Time select ചെയ്യുക");
+   return;
+ }
+
+ timers.push({
+   device:device,
+   time:time
+ });
+
+ renderTimers();
+}
+
+
+function renderTimers(){
+
+ let list=
+ document.getElementById("timerList");
+
+ list.innerHTML="";
+
+ timers.forEach((t,i)=>{
+
+   let div=
+   document.createElement("div");
+
+   div.className="timer";
+
+   div.innerHTML=`
+   <span>⏰ ${t.time} — ${t.device}</span>
+   <button onclick="deleteTimer(${i})">❌</button>
+   `;
+
+   list.appendChild(div);
+ });
+}
+
+
+function deleteTimer(i){
+
+ timers.splice(i,1);
+
+ renderTimers();
+}
+
+
+/* LIVE STATUS EVERY 5 SEC */
+
+setInterval(()=>{
+
+ if(!nodeIP)return;
+
+ fetch(`http://${nodeIP}/status`)
+ .then(r=>r.json())
+ .then(data=>{
+
+   connected=true;
+
+   document.getElementById("connection")
+   .innerHTML=
+   "🟢 NodeMCU Connected";
+
+   updateFromNode(data);
+
+ })
+ .catch(()=>{
+
+   connected=false;
+
+   document.getElementById("connection")
+   .innerHTML=
+   "🔴 NodeMCU Offline";
+
+ });
+
+},5000);
+
+
+/* START */
+
+createRooms();
+
+</script>
+
+</body>
+</html>
