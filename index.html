@@ -1,0 +1,3326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>AJJRA Smart Home</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+:root{
+    --green:#087f5b;
+    --green2:#0ca678;
+    --bg:#eef5f1;
+    --card:#ffffff;
+    --text:#17221c;
+    --muted:#718078;
+    --danger:#c92a2a;
+    --border:#dce6df;
+}
+
+body{
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+
+button,
+input,
+select{
+    font:inherit;
+}
+
+button{
+    cursor:pointer;
+    border:0;
+}
+
+.topbar{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:var(--green);
+    color:white;
+    padding:15px;
+    box-shadow:0 3px 15px #0002;
+}
+
+.topbar-inner{
+    max-width:1100px;
+    margin:auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+}
+
+.brand{
+    font-size:21px;
+    font-weight:bold;
+}
+
+.cloud-status{
+    font-size:13px;
+    background:#ffffff22;
+    padding:8px 11px;
+    border-radius:20px;
+}
+
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:15px;
+}
+
+.card{
+    background:var(--card);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:15px;
+    box-shadow:0 4px 18px #0000000c;
+}
+
+h1,h2,h3{
+    margin-top:0;
+}
+
+input,
+select{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccd8d1;
+    border-radius:10px;
+    margin:5px 0 10px;
+    background:white;
+}
+
+.btn{
+    padding:11px 15px;
+    border-radius:10px;
+    background:#e9efeb;
+    color:var(--text);
+}
+
+.btn-primary{
+    background:var(--green);
+    color:white;
+}
+
+.btn-danger{
+    background:var(--danger);
+    color:white;
+}
+
+.btn-warning{
+    background:#f08c00;
+    color:white;
+}
+
+.btn-small{
+    padding:8px 10px;
+    font-size:13px;
+}
+
+.actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:8px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+}
+
+.stat{
+    background:#f3f7f4;
+    padding:15px;
+    border-radius:14px;
+    text-align:center;
+}
+
+.stat strong{
+    display:block;
+    font-size:25px;
+    color:var(--green);
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+
+.node-card{
+    border:1px solid var(--border);
+    border-radius:15px;
+    padding:15px;
+}
+
+.node-head{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:flex-start;
+}
+
+.node-name{
+    font-size:18px;
+    font-weight:bold;
+}
+
+.online{
+    color:var(--green);
+    font-weight:bold;
+}
+
+.offline{
+    color:var(--danger);
+    font-weight:bold;
+}
+
+.muted{
+    color:var(--muted);
+    font-size:13px;
+}
+
+.device{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px;
+    margin-top:8px;
+    background:#f5f8f6;
+    border-radius:12px;
+}
+
+.device-info{
+    flex:1;
+}
+
+.device-name{
+    font-weight:bold;
+}
+
+.device-meta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:3px;
+}
+
+.toggle{
+    width:55px;
+    height:30px;
+    background:#adb5bd;
+    border-radius:20px;
+    position:relative;
+    flex-shrink:0;
+}
+
+.toggle::after{
+    content:"";
+    position:absolute;
+    width:22px;
+    height:22px;
+    background:white;
+    border-radius:50%;
+    left:4px;
+    top:4px;
+    transition:.2s;
+}
+
+.toggle.on{
+    background:var(--green);
+}
+
+.toggle.on::after{
+    left:29px;
+}
+
+.room-card{
+    border:1px solid var(--border);
+    border-radius:15px;
+    padding:15px;
+    margin-bottom:12px;
+}
+
+.home-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+}
+
+.home-tab{
+    padding:10px 14px;
+    border-radius:20px;
+    background:#e7eee9;
+}
+
+.home-tab.active{
+    background:var(--green);
+    color:white;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#0008;
+    z-index:100;
+    align-items:center;
+    justify-content:center;
+    padding:15px;
+}
+
+.modal-box{
+    background:white;
+    width:100%;
+    max-width:500px;
+    max-height:90vh;
+    overflow:auto;
+    border-radius:18px;
+    padding:20px;
+}
+
+.modal-footer{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
+
+.modal-footer button{
+    flex:1;
+}
+
+.login{
+    max-width:450px;
+    margin:50px auto;
+}
+
+.hidden{
+    display:none!important;
+}
+
+.message{
+    padding:10px;
+    border-radius:10px;
+    background:#eef5f1;
+    margin-top:10px;
+    font-size:14px;
+}
+
+.motor-box{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+.motor-status{
+    padding:18px;
+    border-radius:15px;
+    background:#f3f7f4;
+}
+
+.tank{
+    height:28px;
+    background:#d9dfdb;
+    border-radius:20px;
+    overflow:hidden;
+    margin-top:10px;
+}
+
+.tank-fill{
+    height:100%;
+    width:0;
+    background:var(--green2);
+    transition:.3s;
+}
+
+.log{
+    border-bottom:1px solid var(--border);
+    padding:9px 0;
+    font-size:13px;
+}
+
+.empty{
+    text-align:center;
+    color:var(--muted);
+    padding:25px;
+}
+
+footer{
+    text-align:center;
+    color:var(--muted);
+    padding:30px;
+}
+
+@media(max-width:750px){
+
+    .stats{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .motor-box{
+        grid-template-columns:1fr;
+    }
+
+    .topbar-inner{
+        align-items:flex-start;
+        flex-direction:column;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+
+<!-- =========================================
+     HEADER
+========================================= -->
+
+<header class="topbar">
+
+<div class="topbar-inner">
+
+<div class="brand">
+🏠 AJJRA SMART HOME
+</div>
+
+<div
+id="cloudStatus"
+class="cloud-status">
+☁️ Cloud: Not connected
+</div>
+
+</div>
+
+</header>
+
+
+<!-- =========================================
+     LOGIN
+========================================= -->
+
+<div
+id="loginPage"
+class="container">
+
+<div class="card login">
+
+<h2>🔐 AJJRA Login</h2>
+
+<p class="muted">
+Cloud Smart Home Control
+</p>
+
+<input
+id="loginEmail"
+type="email"
+placeholder="Email">
+
+<input
+id="loginPassword"
+type="password"
+placeholder="Password">
+
+<div class="actions">
+
+<button
+class="btn btn-primary"
+onclick="login()">
+Login
+</button>
+
+<button
+class="btn"
+onclick="signup()">
+Create Account
+</button>
+
+</div>
+
+<div
+id="loginMessage"
+class="message hidden">
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================================
+     MAIN APP
+========================================= -->
+
+<main
+id="appPage"
+class="container hidden">
+
+
+<!-- HOME -->
+
+<div class="card">
+
+<h2>🏠 My Homes</h2>
+
+<div
+id="homeTabs"
+class="home-tabs">
+</div>
+
+<div class="actions">
+
+<button
+class="btn btn-primary"
+onclick="openHomeModal()">
+➕ Add Home
+</button>
+
+<button
+class="btn btn-danger"
+onclick="allOff()">
+🔴 ALL OFF
+</button>
+
+<button
+class="btn"
+onclick="logout()">
+Logout
+</button>
+
+</div>
+
+</div>
+
+
+<!-- STATS -->
+
+<div class="card">
+
+<h2>📊 Dashboard</h2>
+
+<div class="stats">
+
+<div class="stat">
+<strong id="statNodes">0</strong>
+Nodes
+</div>
+
+<div class="stat">
+<strong id="statOnline">0</strong>
+Online
+</div>
+
+<div class="stat">
+<strong id="statDevices">0</strong>
+Devices
+</div>
+
+<div class="stat">
+<strong id="statOn">0</strong>
+ON
+</div>
+
+</div>
+
+</div>
+
+
+<!-- NODE CONTROLLERS -->
+
+<div class="card">
+
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+
+<h2>📡 NodeMCU Controllers</h2>
+
+<button
+class="btn btn-primary"
+onclick="openNodeModal()">
+➕ Add Node
+</button>
+
+</div>
+
+<div
+id="nodeList"
+class="grid">
+</div>
+
+</div>
+
+
+<!-- ROOMS -->
+
+<div class="card">
+
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+
+<h2>🚪 Rooms</h2>
+
+<button
+class="btn btn-primary"
+onclick="openRoomModal()">
+➕ Add Room
+</button>
+
+</div>
+
+<div
+id="roomList">
+</div>
+
+</div>
+
+
+<!-- MOTOR -->
+
+<div class="card">
+
+<h2>💧 Water Motor</h2>
+
+<div class="motor-box">
+
+<div class="motor-status">
+
+<h3 id="motorStatus">
+⚫ Motor OFF
+</h3>
+
+<p class="muted">
+Motor Controller
+</p>
+
+<button
+id="motorButton"
+class="btn btn-primary"
+onclick="toggleMotor()">
+Turn ON
+</button>
+
+</div>
+
+<div class="motor-status">
+
+<h3>🛢️ Tank Level</h3>
+
+<div class="tank">
+
+<div
+id="tankFill"
+class="tank-fill">
+</div>
+
+</div>
+
+<p id="tankText">
+0%
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- ACTIVITY -->
+
+<div class="card">
+
+<h2>📜 Activity</h2>
+
+<div
+id="activityList">
+</div>
+
+</div>
+
+
+</main>
+
+
+<footer>
+AJJRA Smart Home • Cloud Automation
+</footer>
+
+
+<!-- =========================================
+     HOME MODAL
+========================================= -->
+
+<div
+id="homeModal"
+class="modal">
+
+<div class="modal-box">
+
+<h2>🏠 Add Home</h2>
+
+<input
+id="homeName"
+placeholder="Home name">
+
+<div class="modal-footer">
+
+<button
+class="btn"
+onclick="closeModal('homeModal')">
+Cancel
+</button>
+
+<button
+class="btn btn-primary"
+onclick="saveHome()">
+Save
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================================
+     NODE MODAL
+========================================= -->
+
+<div
+id="nodeModal"
+class="modal">
+
+<div class="modal-box">
+
+<h2>📡 Add NodeMCU</h2>
+
+<label>Node Name</label>
+
+<input
+id="nodeName"
+placeholder="First Floor Controller">
+
+<label>Unique Node ID</label>
+
+<input
+id="nodeId"
+placeholder="AJJRA-NODE-01">
+
+<label>Node Security Key</label>
+
+<input
+id="nodeKey"
+placeholder="Unique secret key">
+
+<label>Relay Channels</label>
+
+<input
+id="nodeChannels"
+type="number"
+min="1"
+max="64"
+value="8">
+
+<div class="modal-footer">
+
+<button
+class="btn"
+onclick="closeModal('nodeModal')">
+Cancel
+</button>
+
+<button
+class="btn btn-primary"
+onclick="saveNode()">
+Register
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================================
+     ROOM MODAL
+========================================= -->
+
+<div
+id="roomModal"
+class="modal">
+
+<div class="modal-box">
+
+<h2>🚪 Add Room</h2>
+
+<input
+id="roomName"
+placeholder="Bedroom 1">
+
+<div class="modal-footer">
+
+<button
+class="btn"
+onclick="closeModal('roomModal')">
+Cancel
+</button>
+
+<button
+class="btn btn-primary"
+onclick="saveRoom()">
+Save
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================================
+     DEVICE MODAL
+========================================= -->
+
+<div
+id="deviceModal"
+class="modal">
+
+<div class="modal-box">
+
+<h2>➕ Add Device</h2>
+
+<label>Device Name</label>
+
+<input
+id="deviceName"
+placeholder="Bedroom Light">
+
+<label>Room</label>
+
+<select id="deviceRoom">
+</select>
+
+<label>Device Type</label>
+
+<select id="deviceType">
+
+<option value="Light">
+💡 Light
+</option>
+
+<option value="Fan">
+🌀 Fan
+</option>
+
+<option value="AC">
+❄️ AC
+</option>
+
+<option value="Socket">
+🔌 Socket
+</option>
+
+<option value="TV">
+📺 TV
+</option>
+
+<option value="Motor">
+💧 Motor
+</option>
+
+<option value="Other">
+⚙️ Other
+</option>
+
+</select>
+
+<label>Relay Channel</label>
+
+<input
+id="deviceChannel"
+type="number"
+min="1"
+placeholder="1">
+
+<input
+id="deviceNode"
+type="hidden">
+
+<div class="modal-footer">
+
+<button
+class="btn"
+onclick="closeModal('deviceModal')">
+Cancel
+</button>
+
+<button
+class="btn btn-primary"
+onclick="saveDevice()">
+Save Device
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/*
+====================================================
+AJJRA SMART HOME
+CONFIGURATION
+====================================================
+*/
+
+const CONFIG = {
+
+    SUPABASE_URL:
+    "YOUR_SUPABASE_URL",
+
+    SUPABASE_ANON_KEY:
+    "YOUR_SUPABASE_ANON_KEY",
+
+    MQTT_URL:
+    "wss://YOUR-MQTT-BROKER:PORT/mqtt",
+
+    MQTT_USERNAME:
+    "YOUR_MQTT_USERNAME",
+
+    MQTT_PASSWORD:
+    "YOUR_MQTT_PASSWORD"
+
+};
+
+
+/*
+====================================================
+SUPABASE
+====================================================
+*/
+
+let supabaseClient=null;
+
+let mqttClient=null;
+
+let currentUser=null;
+
+let homes=[];
+
+let nodes=[];
+
+let rooms=[];
+
+let devices=[];
+
+let logs=[];
+
+let currentHome=null;
+
+let motorState=false;
+
+let tankLevel=0;
+
+
+/*
+====================================================
+INIT
+====================================================
+*/
+
+async function init(){
+
+    if(
+        CONFIG.SUPABASE_URL.startsWith("YOUR_")
+    ){
+
+        setCloudStatus(
+            "⚠️ Supabase configuration required"
+        );
+
+        return;
+
+    }
+
+
+    supabaseClient=
+    supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+    );
+
+
+    const session=
+    await supabaseClient
+    .auth
+    .getSession();
+
+
+    if(
+        session.data.session
+    ){
+
+        currentUser=
+        session.data.session.user;
+
+        showApp();
+
+    }
+
+
+    supabaseClient
+    .auth
+    .onAuthStateChange(
+        async(event,session)=>{
+
+            if(session){
+
+                currentUser=
+                session.user;
+
+                showApp();
+
+            }
+
+        }
+    );
+
+}
+
+
+init();
+
+
+/*
+====================================================
+LOGIN
+====================================================
+*/
+
+async function login(){
+
+    if(!supabaseClient){
+
+        showLoginMessage(
+            "ആദ്യം Supabase configuration നൽകുക."
+        );
+
+        return;
+    }
+
+
+    const email=
+    value("loginEmail");
+
+    const password=
+    value("loginPassword");
+
+
+    if(!email || !password){
+
+        showLoginMessage(
+            "Email, password നൽകുക."
+        );
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .auth
+    .signInWithPassword({
+
+        email:email,
+
+        password:password
+
+    });
+
+
+    if(result.error){
+
+        showLoginMessage(
+            result.error.message
+        );
+
+        return;
+    }
+
+
+    currentUser=
+    result.data.user;
+
+    showApp();
+
+}
+
+
+/*
+====================================================
+SIGNUP
+====================================================
+*/
+
+async function signup(){
+
+    if(!supabaseClient){
+
+        showLoginMessage(
+            "Supabase configuration നൽകുക."
+        );
+
+        return;
+    }
+
+
+    const email=
+    value("loginEmail");
+
+    const password=
+    value("loginPassword");
+
+
+    if(!email || !password){
+
+        showLoginMessage(
+            "Email, password നൽകുക."
+        );
+
+        return;
+    }
+
+
+    if(password.length<6){
+
+        showLoginMessage(
+            "Password കുറഞ്ഞത് 6 characters വേണം."
+        );
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .auth
+    .signUp({
+
+        email:email,
+
+        password:password
+
+    });
+
+
+    if(result.error){
+
+        showLoginMessage(
+            result.error.message
+        );
+
+        return;
+    }
+
+
+    showLoginMessage(
+        "Account created. Email verification ആവശ്യപ്പെട്ടാൽ verify ചെയ്യുക."
+    );
+
+}
+
+
+/*
+====================================================
+SHOW APP
+====================================================
+*/
+
+async function showApp(){
+
+    document
+    .getElementById("loginPage")
+    .classList.add("hidden");
+
+
+    document
+    .getElementById("appPage")
+    .classList.remove("hidden");
+
+
+    setCloudStatus(
+        "☁️ Cloud: Connected"
+    );
+
+
+    await loadAll();
+
+    connectMQTT();
+
+}
+
+
+/*
+====================================================
+LOAD ALL
+====================================================
+*/
+
+async function loadAll(){
+
+    await loadHomes();
+
+
+    if(!currentHome && homes.length){
+
+        currentHome=homes[0];
+
+    }
+
+
+    await loadNodes();
+
+    await loadRooms();
+
+    await loadDevices();
+
+    await loadLogs();
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+LOAD HOMES
+====================================================
+*/
+
+async function loadHomes(){
+
+    const result=
+    await supabaseClient
+    .from("homes")
+    .select("*")
+    .order("created_at");
+
+
+    if(result.error){
+
+        console.error(result.error);
+
+        return;
+    }
+
+
+    homes=
+    result.data || [];
+
+}
+
+
+/*
+====================================================
+LOAD NODES
+====================================================
+*/
+
+async function loadNodes(){
+
+    if(!currentHome){
+
+        nodes=[];
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("nodes")
+    .select("*")
+    .eq(
+        "home_id",
+        currentHome.id
+    )
+    .order("created_at");
+
+
+    nodes=
+    result.data || [];
+
+}
+
+
+/*
+====================================================
+LOAD ROOMS
+====================================================
+*/
+
+async function loadRooms(){
+
+    if(!currentHome){
+
+        rooms=[];
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("rooms")
+    .select("*")
+    .eq(
+        "home_id",
+        currentHome.id
+    )
+    .order("name");
+
+
+    rooms=
+    result.data || [];
+
+}
+
+
+/*
+====================================================
+LOAD DEVICES
+====================================================
+*/
+
+async function loadDevices(){
+
+    if(!currentHome){
+
+        devices=[];
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("devices")
+    .select("*")
+    .eq(
+        "home_id",
+        currentHome.id
+    )
+    .order("created_at");
+
+
+    devices=
+    result.data || [];
+
+}
+
+
+/*
+====================================================
+LOAD LOGS
+====================================================
+*/
+
+async function loadLogs(){
+
+    if(!currentHome){
+
+        logs=[];
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("activity_logs")
+    .select("*")
+    .eq(
+        "home_id",
+        currentHome.id
+    )
+    .order(
+        "created_at",
+        {
+            ascending:false
+        }
+    )
+    .limit(30);
+
+
+    logs=
+    result.data || [];
+
+}
+
+
+/*
+====================================================
+RENDER ALL
+====================================================
+*/
+
+function renderAll(){
+
+    renderHomes();
+
+    renderStats();
+
+    renderNodes();
+
+    renderRooms();
+
+    renderRoomSelect();
+
+    renderLogs();
+
+    renderMotor();
+
+}
+
+
+/*
+====================================================
+HOMES
+====================================================
+*/
+
+function renderHomes(){
+
+    const el=
+    document.getElementById(
+        "homeTabs"
+    );
+
+    el.innerHTML="";
+
+
+    homes.forEach(home=>{
+
+        const btn=
+        document.createElement(
+            "button"
+        );
+
+        btn.className=
+        "home-tab "+
+        (
+            currentHome &&
+            home.id===currentHome.id
+            ?
+            "active":
+            ""
+        );
+
+
+        btn.textContent=
+        "🏠 "+home.name;
+
+
+        btn.onclick=
+        async()=>{
+
+            currentHome=home;
+
+            await loadNodes();
+
+            await loadRooms();
+
+            await loadDevices();
+
+            await loadLogs();
+
+            renderAll();
+
+        };
+
+
+        el.appendChild(btn);
+
+    });
+
+
+    if(!homes.length){
+
+        el.innerHTML=
+        `<div class="empty">
+        ആദ്യം Home create ചെയ്യുക.
+        </div>`;
+
+    }
+
+}
+
+
+/*
+====================================================
+STATS
+====================================================
+*/
+
+function renderStats(){
+
+    document.getElementById(
+        "statNodes"
+    ).innerText=
+    nodes.length;
+
+
+    document.getElementById(
+        "statOnline"
+    ).innerText=
+    nodes.filter(
+        n=>n.online
+    ).length;
+
+
+    document.getElementById(
+        "statDevices"
+    ).innerText=
+    devices.length;
+
+
+    document.getElementById(
+        "statOn"
+    ).innerText=
+    devices.filter(
+        d=>d.state
+    ).length;
+
+}
+
+
+/*
+====================================================
+NODE LIST
+====================================================
+*/
+
+function renderNodes(){
+
+    const list=
+    document.getElementById(
+        "nodeList"
+    );
+
+    list.innerHTML="";
+
+
+    if(!nodes.length){
+
+        list.innerHTML=
+        `<div class="empty">
+        📡 No NodeMCU controllers.<br><br>
+        Add your first NodeMCU.
+        </div>`;
+
+        return;
+    }
+
+
+    nodes.forEach(node=>{
+
+        const card=
+        document.createElement(
+            "div"
+        );
+
+        card.className=
+        "node-card";
+
+
+        const nodeDevices=
+        devices.filter(
+            d=>d.node_id===node.id
+        );
+
+
+        card.innerHTML=`
+
+        <div class="node-head">
+
+            <div>
+
+                <div class="node-name">
+                📡 ${esc(node.name)}
+                </div>
+
+                <div class="muted">
+                ID: ${esc(node.node_id)}
+                </div>
+
+                <div class="muted">
+                Channels: ${node.channels}
+                </div>
+
+            </div>
+
+            <div class="${
+                node.online
+                ?
+                "online":
+                "offline"
+            }">
+
+            ${
+                node.online
+                ?
+                "● ONLINE":
+                "● OFFLINE"
+            }
+
+            </div>
+
+        </div>
+
+
+        <div class="actions">
+
+            <button
+            class="btn btn-primary btn-small"
+            onclick="openDeviceModal('${node.id}')">
+
+            ➕ Device
+
+            </button>
+
+
+            <button
+            class="btn btn-small"
+            onclick="checkNode('${node.id}')">
+
+            🔄 Status
+
+            </button>
+
+
+            <button
+            class="btn btn-danger btn-small"
+            onclick="deleteNode('${node.id}')">
+
+            Delete
+
+            </button>
+
+        </div>
+
+
+        <div>
+
+        ${
+            nodeDevices.length
+            ?
+            nodeDevices
+            .map(deviceHTML)
+            .join("")
+            :
+            `<div class="empty">
+            No devices
+            </div>`
+        }
+
+        </div>
+
+        `;
+
+
+        list.appendChild(card);
+
+    });
+
+}
+
+
+/*
+====================================================
+DEVICE HTML
+====================================================
+*/
+
+function deviceHTML(device){
+
+    return `
+
+    <div class="device">
+
+        <div class="device-info">
+
+            <div class="device-name">
+
+            ${icon(device.device_type)}
+            ${esc(device.name)}
+
+            </div>
+
+            <div class="device-meta">
+
+            ${esc(
+                getRoomName(
+                    device.room_id
+                )
+            )}
+
+            • Channel ${device.channel}
+
+            </div>
+
+            <div class="device-meta">
+
+            ${
+                device.state
+                ?
+                "🟢 ON":
+                "⚫ OFF"
+            }
+
+            </div>
+
+        </div>
+
+
+        <button
+        class="toggle ${
+            device.state
+            ?
+            "on":
+            ""
+        }"
+        onclick="toggleDevice('${device.id}')">
+        </button>
+
+
+        <button
+        class="btn btn-danger btn-small"
+        onclick="deleteDevice('${device.id}')">
+
+        ❌
+
+        </button>
+
+    </div>
+
+    `;
+
+}
+
+
+/*
+====================================================
+ROOMS
+====================================================
+*/
+
+function renderRooms(){
+
+    const list=
+    document.getElementById(
+        "roomList"
+    );
+
+    list.innerHTML="";
+
+
+    if(!rooms.length){
+
+        list.innerHTML=
+        `<div class="empty">
+        No rooms created.
+        </div>`;
+
+        return;
+    }
+
+
+    rooms.forEach(room=>{
+
+        const roomDevices=
+        devices.filter(
+            d=>d.room_id===room.id
+        );
+
+
+        const div=
+        document.createElement(
+            "div"
+        );
+
+        div.className=
+        "room-card";
+
+
+        div.innerHTML=`
+
+        <h3>
+        🚪 ${esc(room.name)}
+        </h3>
+
+        <div class="muted">
+        ${roomDevices.length} device(s)
+        </div>
+
+        ${
+            roomDevices
+            .map(deviceHTML)
+            .join("")
+        }
+
+        <div class="actions">
+
+        <button
+        class="btn btn-danger btn-small"
+        onclick="deleteRoom('${room.id}')">
+
+        Delete Room
+
+        </button>
+
+        </div>
+
+        `;
+
+
+        list.appendChild(div);
+
+    });
+
+}
+
+
+/*
+====================================================
+ROOM SELECT
+====================================================
+*/
+
+function renderRoomSelect(){
+
+    const select=
+    document.getElementById(
+        "deviceRoom"
+    );
+
+    select.innerHTML="";
+
+
+    rooms.forEach(room=>{
+
+        const option=
+        document.createElement(
+            "option"
+        );
+
+        option.value=room.id;
+
+        option.textContent=
+        room.name;
+
+        select.appendChild(option);
+
+    });
+
+}
+
+
+/*
+====================================================
+LOGS
+====================================================
+*/
+
+function renderLogs(){
+
+    const el=
+    document.getElementById(
+        "activityList"
+    );
+
+    el.innerHTML="";
+
+
+    if(!logs.length){
+
+        el.innerHTML=
+        `<div class="empty">
+        No activity yet.
+        </div>`;
+
+        return;
+    }
+
+
+    logs.forEach(log=>{
+
+        const div=
+        document.createElement(
+            "div"
+        );
+
+        div.className="log";
+
+
+        div.innerHTML=`
+
+        <b>
+        ${esc(log.action || "")}
+        </b>
+
+        :
+
+        ${esc(log.value || "")}
+
+        <div class="muted">
+        ${new Date(
+            log.created_at
+        ).toLocaleString()}
+        </div>
+
+        `;
+
+
+        el.appendChild(div);
+
+    });
+
+}
+
+
+/*
+====================================================
+HOME MODAL
+====================================================
+*/
+
+function openHomeModal(){
+
+    document.getElementById(
+        "homeModal"
+    ).style.display="flex";
+
+}
+
+
+async function saveHome(){
+
+    const name=
+    value("homeName");
+
+
+    if(!name){
+
+        alert("Home name നൽകുക");
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("homes")
+    .insert({
+
+        user_id:
+        currentUser.id,
+
+        name:name
+
+    })
+    .select()
+    .single();
+
+
+    if(result.error){
+
+        alert(result.error.message);
+
+        return;
+    }
+
+
+    homes.push(result.data);
+
+    currentHome=result.data;
+
+
+    document.getElementById(
+        "homeName"
+    ).value="";
+
+
+    closeModal("homeModal");
+
+    await loadNodes();
+
+    await loadRooms();
+
+    await loadDevices();
+
+    await loadLogs();
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+NODE MODAL
+====================================================
+*/
+
+function openNodeModal(){
+
+    if(!currentHome){
+
+        alert(
+            "ആദ്യം Home create ചെയ്യുക."
+        );
+
+        return;
+    }
+
+
+    document.getElementById(
+        "nodeModal"
+    ).style.display="flex";
+
+}
+
+
+async function saveNode(){
+
+    const name=
+    value("nodeName");
+
+    const nodeId=
+    value("nodeId");
+
+    const key=
+    value("nodeKey");
+
+    const channels=
+    Number(
+        value("nodeChannels")
+    );
+
+
+    if(
+        !name ||
+        !nodeId ||
+        !key ||
+        !channels
+    ){
+
+        alert(
+            "Node information പൂർണ്ണമായി നൽകുക."
+        );
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("nodes")
+    .insert({
+
+        home_id:
+        currentHome.id,
+
+        node_id:
+        nodeId,
+
+        name:name,
+
+        device_key:key,
+
+        channels:channels,
+
+        online:false
+
+    })
+    .select()
+    .single();
+
+
+    if(result.error){
+
+        alert(result.error.message);
+
+        return;
+    }
+
+
+    nodes.push(result.data);
+
+    clearNodeForm();
+
+    closeModal("nodeModal");
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+ROOM MODAL
+====================================================
+*/
+
+function openRoomModal(){
+
+    if(!currentHome){
+
+        alert(
+            "ആദ്യം Home create ചെയ്യുക."
+        );
+
+        return;
+    }
+
+
+    document.getElementById(
+        "roomModal"
+    ).style.display="flex";
+
+}
+
+
+async function saveRoom(){
+
+    const name=
+    value("roomName");
+
+
+    if(!name){
+
+        alert(
+            "Room name നൽകുക."
+        );
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("rooms")
+    .insert({
+
+        home_id:
+        currentHome.id,
+
+        name:name
+
+    })
+    .select()
+    .single();
+
+
+    if(result.error){
+
+        alert(result.error.message);
+
+        return;
+    }
+
+
+    rooms.push(result.data);
+
+    document.getElementById(
+        "roomName"
+    ).value="";
+
+
+    closeModal("roomModal");
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+DEVICE MODAL
+====================================================
+*/
+
+function openDeviceModal(nodeId){
+
+    if(!rooms.length){
+
+        alert(
+            "ആദ്യം ഒരു Room create ചെയ്യുക."
+        );
+
+        return;
+    }
+
+
+    document.getElementById(
+        "deviceNode"
+    ).value=nodeId;
+
+
+    document.getElementById(
+        "deviceModal"
+    ).style.display="flex";
+
+}
+
+
+async function saveDevice(){
+
+    const name=
+    value("deviceName");
+
+    const roomId=
+    value("deviceRoom");
+
+    const type=
+    value("deviceType");
+
+    const channel=
+    Number(
+        value("deviceChannel")
+    );
+
+    const nodeId=
+    value("deviceNode");
+
+
+    const node=
+    nodes.find(
+        n=>n.id===nodeId
+    );
+
+
+    if(!node){
+
+        alert("Node കണ്ടെത്തിയില്ല.");
+
+        return;
+    }
+
+
+    if(
+        !name ||
+        !channel ||
+        !roomId
+    ){
+
+        alert(
+            "Device information നൽകുക."
+        );
+
+        return;
+    }
+
+
+    if(
+        channel<1 ||
+        channel>node.channels
+    ){
+
+        alert(
+            `Channel 1-${node.channels} മാത്രം.`
+        );
+
+        return;
+    }
+
+
+    const duplicate=
+    devices.some(
+        d=>
+        d.node_id===nodeId &&
+        Number(d.channel)===channel
+    );
+
+
+    if(duplicate){
+
+        alert(
+            "ഈ channel ഇതിനകം ഉപയോഗിച്ചിട്ടുണ്ട്."
+        );
+
+        return;
+    }
+
+
+    const result=
+    await supabaseClient
+    .from("devices")
+    .insert({
+
+        home_id:
+        currentHome.id,
+
+        node_id:
+        nodeId,
+
+        room_id:
+        roomId,
+
+        name:name,
+
+        device_type:
+        type,
+
+        channel:
+        channel,
+
+        state:false
+
+    })
+    .select()
+    .single();
+
+
+    if(result.error){
+
+        alert(result.error.message);
+
+        return;
+    }
+
+
+    devices.push(result.data);
+
+
+    clearDeviceForm();
+
+    closeModal("deviceModal");
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+DEVICE CONTROL
+====================================================
+*/
+
+async function toggleDevice(id){
+
+    const device=
+    devices.find(
+        d=>d.id===id
+    );
+
+
+    if(!device)return;
+
+
+    const node=
+    nodes.find(
+        n=>n.id===device.node_id
+    );
+
+
+    if(!node){
+
+        alert("Node not found.");
+
+        return;
+    }
+
+
+    const newState=
+    !device.state;
+
+
+    /*
+    MQTT command
+    */
+
+    const sent=
+    publishRelay(
+        node.node_id,
+        device.channel,
+        newState
+    );
+
+
+    if(!sent){
+
+        alert(
+            "MQTT cloud connection ഇല്ല. ആദ്യം MQTT configure ചെയ്യുക."
+        );
+
+        return;
+    }
+
+
+    /*
+    Update local/cloud state
+    */
+
+    const result=
+    await supabaseClient
+    .from("devices")
+    .update({
+
+        state:newState
+
+    })
+    .eq(
+        "id",
+        device.id
+    );
+
+
+    if(result.error){
+
+        console.error(
+            result.error
+        );
+
+        return;
+    }
+
+
+    device.state=newState;
+
+
+    await addLog(
+        device,
+        newState
+        ?
+        "ON":
+        "OFF"
+    );
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+MQTT RELAY
+====================================================
+*/
+
+function publishRelay(
+    nodeId,
+    channel,
+    state
+){
+
+    if(
+        !mqttClient ||
+        !mqttClient.connected
+    ){
+
+        return false;
+    }
+
+
+    const topic=
+    `ajjra/node/${nodeId}/relay/${channel}/set`;
+
+
+    const payload=
+    state?
+    "ON":
+    "OFF";
+
+
+    mqttClient.publish(
+        topic,
+        payload,
+        {
+            qos:1
+        }
+    );
+
+
+    return true;
+
+}
+
+
+/*
+====================================================
+MQTT CONNECT
+====================================================
+*/
+
+function connectMQTT(){
+
+    if(
+        CONFIG.MQTT_URL.startsWith(
+            "wss://YOUR-"
+        )
+    ){
+
+        setCloudStatus(
+            "☁️ Supabase connected • MQTT not configured"
+        );
+
+        return;
+    }
+
+
+    try{
+
+        mqttClient=
+        mqtt.connect(
+            CONFIG.MQTT_URL,
+            {
+
+                username:
+                CONFIG.MQTT_USERNAME,
+
+                password:
+                CONFIG.MQTT_PASSWORD,
+
+                reconnectPeriod:3000,
+
+                clean:true
+
+            }
+        );
+
+
+        mqttClient.on(
+            "connect",
+            onMQTTConnected
+        );
+
+
+        mqttClient.on(
+            "message",
+            onMQTTMessage
+        );
+
+
+        mqttClient.on(
+            "error",
+            err=>{
+
+                console.error(
+                    "MQTT error",
+                    err
+                );
+
+            }
+        );
+
+
+        mqttClient.on(
+            "close",
+            ()=>{
+
+                setCloudStatus(
+                    "☁️ MQTT disconnected"
+                );
+
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+/*
+====================================================
+MQTT CONNECTED
+====================================================
+*/
+
+function onMQTTConnected(){
+
+    setCloudStatus(
+        "☁️ Cloud + MQTT: Connected"
+    );
+
+
+    nodes.forEach(node=>{
+
+        const topic=
+        `ajjra/node/${node.node_id}/#`;
+
+
+        mqttClient.subscribe(
+            topic,
+            {
+                qos:1
+            }
+        );
+
+    });
+
+}
+
+
+/*
+====================================================
+MQTT MESSAGE
+====================================================
+*/
+
+async function onMQTTMessage(
+    topic,
+    payload
+){
+
+    const message=
+    payload.toString();
+
+
+    console.log(
+        "MQTT:",
+        topic,
+        message
+    );
+
+
+    /*
+    Expected:
+
+    ajjra/node/NODE-ID/relay/1/state
+    */
+
+
+    const parts=
+    topic.split("/");
+
+
+    if(
+        parts.length<6
+    )return;
+
+
+    if(
+        parts[0]!=="ajjra" ||
+        parts[1]!=="node"
+    )return;
+
+
+    const nodeId=
+    parts[2];
+
+
+    const type=
+    parts[3];
+
+
+    if(type==="status"){
+
+        const node=
+        nodes.find(
+            n=>n.node_id===nodeId
+        );
+
+
+        if(node){
+
+            node.online=
+            message==="ONLINE";
+
+            renderAll();
+
+        }
+
+        return;
+    }
+
+
+    if(type!=="relay")return;
+
+
+    const channel=
+    Number(parts[4]);
+
+    const action=
+    parts[5];
+
+
+    if(action!=="state")return;
+
+
+    const state=
+    message==="ON" ||
+    message==="1";
+
+
+    const node=
+    nodes.find(
+        n=>n.node_id===nodeId
+    );
+
+
+    if(!node)return;
+
+
+    node.online=true;
+
+
+    const device=
+    devices.find(
+        d=>
+        d.node_id===node.id &&
+        Number(d.channel)===channel
+    );
+
+
+    if(device){
+
+        device.state=state;
+
+        await supabaseClient
+        .from("devices")
+        .update({
+            state:state
+        })
+        .eq(
+            "id",
+            device.id
+        );
+
+    }
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+CHECK NODE
+====================================================
+*/
+
+function checkNode(id){
+
+    const node=
+    nodes.find(
+        n=>n.id===id
+    );
+
+
+    if(!node)return;
+
+
+    if(
+        !mqttClient ||
+        !mqttClient.connected
+    ){
+
+        alert(
+            "MQTT disconnected."
+        );
+
+        return;
+    }
+
+
+    mqttClient.publish(
+        `ajjra/node/${node.node_id}/status/request`,
+        "STATUS",
+        {
+            qos:1
+        }
+    );
+
+}
+
+
+/*
+====================================================
+ALL OFF
+====================================================
+*/
+
+async function allOff(){
+
+    if(!devices.length)return;
+
+
+    if(
+        !mqttClient ||
+        !mqttClient.connected
+    ){
+
+        alert(
+            "MQTT cloud connection ഇല്ല."
+        );
+
+        return;
+    }
+
+
+    for(
+        const device of devices
+    ){
+
+        const node=
+        nodes.find(
+            n=>n.id===device.node_id
+        );
+
+
+        if(!node)continue;
+
+
+        publishRelay(
+            node.node_id,
+            device.channel,
+            false
+        );
+
+
+        device.state=false;
+
+
+        await supabaseClient
+        .from("devices")
+        .update({
+            state:false
+        })
+        .eq(
+            "id",
+            device.id
+        );
+
+    }
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+MOTOR
+====================================================
+*/
+
+function toggleMotor(){
+
+    motorState=
+    !motorState;
+
+
+    /*
+    Motor node can be configured
+    as a normal device.
+    */
+
+
+    const motor=
+    devices.find(
+        d=>
+        d.device_type==="Motor"
+    );
+
+
+    if(motor){
+
+        toggleDevice(
+            motor.id
+        );
+
+        return;
+    }
+
+
+    alert(
+        "Device Type = Motor ഉള്ള device ആദ്യം add ചെയ്യുക."
+    );
+
+}
+
+
+/*
+====================================================
+MOTOR UI
+====================================================
+*/
+
+function renderMotor(){
+
+    document.getElementById(
+        "motorStatus"
+    ).innerText=
+    motorState
+    ?
+    "🟢 Motor ON":
+    "⚫ Motor OFF";
+
+
+    document.getElementById(
+        "motorButton"
+    ).innerText=
+    motorState
+    ?
+    "Turn OFF":
+    "Turn ON";
+
+
+    document.getElementById(
+        "tankFill"
+    ).style.width=
+    tankLevel+"%";
+
+
+    document.getElementById(
+        "tankText"
+    ).innerText=
+    tankLevel+"%";
+
+}
+
+
+/*
+====================================================
+DELETE NODE
+====================================================
+*/
+
+async function deleteNode(id){
+
+    if(
+        !confirm(
+            "Node delete ചെയ്യണോ?"
+        )
+    )return;
+
+
+    const result=
+    await supabaseClient
+    .from("nodes")
+    .delete()
+    .eq(
+        "id",
+        id
+    );
+
+
+    if(result.error){
+
+        alert(
+            result.error.message
+        );
+
+        return;
+    }
+
+
+    nodes=
+    nodes.filter(
+        n=>n.id!==id
+    );
+
+
+    devices=
+    devices.filter(
+        d=>d.node_id!==id
+    );
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+DELETE DEVICE
+====================================================
+*/
+
+async function deleteDevice(id){
+
+    if(
+        !confirm(
+            "Device delete ചെയ്യണോ?"
+        )
+    )return;
+
+
+    const result=
+    await supabaseClient
+    .from("devices")
+    .delete()
+    .eq(
+        "id",
+        id
+    );
+
+
+    if(result.error){
+
+        alert(
+            result.error.message
+        );
+
+        return;
+    }
+
+
+    devices=
+    devices.filter(
+        d=>d.id!==id
+    );
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+DELETE ROOM
+====================================================
+*/
+
+async function deleteRoom(id){
+
+    if(
+        !confirm(
+            "Room delete ചെയ്യണോ?"
+        )
+    )return;
+
+
+    const result=
+    await supabaseClient
+    .from("rooms")
+    .delete()
+    .eq(
+        "id",
+        id
+    );
+
+
+    if(result.error){
+
+        alert(
+            result.error.message
+        );
+
+        return;
+    }
+
+
+    rooms=
+    rooms.filter(
+        r=>r.id!==id
+    );
+
+
+    devices=
+    devices.map(
+        d=>
+        d.room_id===id
+        ?
+        {
+            ...d,
+            room_id:null
+        }
+        :
+        d
+    );
+
+
+    renderAll();
+
+}
+
+
+/*
+====================================================
+LOG
+====================================================
+*/
+
+async function addLog(
+    device,
+    valueText
+){
+
+    if(!currentHome)return;
+
+
+    const result=
+    await supabaseClient
+    .from("activity_logs")
+    .insert({
+
+        home_id:
+        currentHome.id,
+
+        node_id:
+        device.node_id,
+
+        device_id:
+        device.id,
+
+        action:
+        device.name,
+
+        value:
+        valueText
+
+    });
+
+
+    if(!result.error){
+
+        logs.unshift({
+
+            home_id:
+            currentHome.id,
+
+            node_id:
+            device.node_id,
+
+            device_id:
+            device.id,
+
+            action:
+            device.name,
+
+            value:
+            valueText,
+
+            created_at:
+            new Date().toISOString()
+
+        });
+
+
+        logs=
+        logs.slice(0,30);
+
+    }
+
+}
+
+
+/*
+====================================================
+LOGOUT
+====================================================
+*/
+
+async function logout(){
+
+    if(supabaseClient){
+
+        await supabaseClient
+        .auth
+        .signOut();
+
+    }
+
+    location.reload();
+
+}
+
+
+/*
+====================================================
+MODAL
+====================================================
+*/
+
+function closeModal(id){
+
+    document.getElementById(
+        id
+    ).style.display="none";
+
+}
+
+
+/*
+====================================================
+CLEAR FORMS
+====================================================
+*/
+
+function clearNodeForm(){
+
+    document.getElementById(
+        "nodeName"
+    ).value="";
+
+    document.getElementById(
+        "nodeId"
+    ).value="";
+
+    document.getElementById(
+        "nodeKey"
+    ).value="";
+
+    document.getElementById(
+        "nodeChannels"
+    ).value="8";
+
+}
+
+
+function clearDeviceForm(){
+
+    document.getElementById(
+        "deviceName"
+    ).value="";
+
+    document.getElementById(
+        "deviceChannel"
+    ).value="";
+
+}
+
+
+/*
+====================================================
+HELPERS
+====================================================
+*/
+
+function value(id){
+
+    return document
+    .getElementById(id)
+    .value
+    .trim();
+
+}
+
+
+function icon(type){
+
+    const map={
+
+        Light:"💡",
+
+        Fan:"🌀",
+
+        AC:"❄️",
+
+        Socket:"🔌",
+
+        TV:"📺",
+
+        Motor:"💧",
+
+        Other:"⚙️"
+
+    };
+
+
+    return map[type] || "⚙️";
+
+}
+
+
+function getRoomName(id){
+
+    const room=
+    rooms.find(
+        r=>r.id===id
+    );
+
+
+    return room
+    ?
+    room.name:
+    "No Room";
+
+}
+
+
+function esc(value){
+
+    return String(
+        value ?? ""
+    )
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+
+function setCloudStatus(text){
+
+    document.getElementById(
+        "cloudStatus"
+    ).innerText=text;
+
+}
+
+
+function showLoginMessage(text){
+
+    const el=
+    document.getElementById(
+        "loginMessage"
+    );
+
+    el.classList.remove(
+        "hidden"
+    );
+
+    el.innerText=text;
+
+}
+
+
+/*
+====================================================
+END
+====================================================
+*/
+
+</script>
+
+</body>
+</html>
