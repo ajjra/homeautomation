@@ -1,0 +1,2402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJJRA Smart Home</title>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+:root{
+ --primary:#087f5b;
+ --primary2:#12b886;
+ --bg:#eef5f1;
+ --card:#fff;
+ --text:#18231d;
+ --muted:#718078;
+ --danger:#d63939;
+ --warning:#f08c00;
+ --line:#dce6df;
+}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:var(--bg);
+ color:var(--text);
+}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0}
+header{
+ background:var(--primary);
+ color:#fff;
+ padding:15px;
+ position:sticky;
+ top:0;
+ z-index:20;
+ box-shadow:0 3px 15px #0002;
+}
+.header{
+ max-width:1150px;
+ margin:auto;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+}
+.logo{font-size:21px;font-weight:bold}
+.status{
+ padding:8px 12px;
+ background:#ffffff20;
+ border-radius:20px;
+ font-size:13px;
+}
+main{
+ max-width:1150px;
+ margin:auto;
+ padding:15px;
+}
+.card{
+ background:var(--card);
+ border-radius:18px;
+ padding:18px;
+ margin-bottom:15px;
+ box-shadow:0 4px 18px #0000000c;
+}
+.stats{
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ gap:10px;
+}
+.stat{
+ background:#f3f7f4;
+ padding:15px;
+ border-radius:14px;
+ text-align:center;
+}
+.stat strong{
+ display:block;
+ font-size:25px;
+ color:var(--primary);
+}
+.tabs{
+ display:flex;
+ gap:8px;
+ flex-wrap:wrap;
+}
+.tab{
+ padding:10px 15px;
+ border-radius:20px;
+ background:#e7eee9;
+}
+.tab.active{
+ background:var(--primary);
+ color:white;
+}
+.actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin-top:10px;
+}
+.btn{
+ padding:10px 14px;
+ border-radius:10px;
+ background:#e8eeea;
+}
+.primary{
+ background:var(--primary);
+ color:#fff;
+}
+.danger{
+ background:var(--danger);
+ color:#fff;
+}
+.warning{
+ background:var(--warning);
+ color:#fff;
+}
+input,select{
+ width:100%;
+ padding:12px;
+ border:1px solid #cbd8d0;
+ border-radius:10px;
+ margin:5px 0 12px;
+ background:#fff;
+}
+.grid{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:12px;
+}
+.node,.room{
+ border:1px solid var(--line);
+ border-radius:15px;
+ padding:15px;
+}
+.node-head{
+ display:flex;
+ justify-content:space-between;
+ gap:10px;
+}
+.node-name{
+ font-weight:bold;
+ font-size:18px;
+}
+.online{color:var(--primary);font-weight:bold}
+.offline{color:var(--danger);font-weight:bold}
+.muted{
+ color:var(--muted);
+ font-size:13px;
+}
+.device{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:11px;
+ background:#f5f8f6;
+ border-radius:12px;
+ margin-top:8px;
+}
+.device-info{flex:1}
+.device-name{font-weight:bold}
+.switch{
+ width:55px;
+ height:30px;
+ border-radius:20px;
+ background:#adb5bd;
+ position:relative;
+ flex:none;
+}
+.switch:after{
+ content:"";
+ position:absolute;
+ width:22px;
+ height:22px;
+ top:4px;
+ left:4px;
+ background:#fff;
+ border-radius:50%;
+ transition:.2s;
+}
+.switch.on{background:var(--primary2)}
+.switch.on:after{left:29px}
+.room{
+ margin-bottom:12px;
+}
+.modal{
+ display:none;
+ position:fixed;
+ inset:0;
+ background:#0008;
+ z-index:100;
+ align-items:center;
+ justify-content:center;
+ padding:15px;
+}
+.modal-box{
+ width:100%;
+ max-width:520px;
+ max-height:90vh;
+ overflow:auto;
+ background:#fff;
+ border-radius:18px;
+ padding:20px;
+}
+.modal-footer{
+ display:flex;
+ gap:8px;
+}
+.modal-footer button{flex:1}
+.motor{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:12px;
+}
+.motor-card{
+ background:#f3f7f4;
+ border-radius:15px;
+ padding:18px;
+}
+.tank{
+ height:28px;
+ background:#d8dfda;
+ border-radius:20px;
+ overflow:hidden;
+}
+.fill{
+ height:100%;
+ width:0%;
+ background:var(--primary2);
+ transition:.3s;
+}
+.log{
+ padding:9px 0;
+ border-bottom:1px solid var(--line);
+ font-size:13px;
+}
+.empty{
+ padding:25px;
+ text-align:center;
+ color:var(--muted);
+}
+footer{
+ text-align:center;
+ padding:25px;
+ color:var(--muted);
+}
+.small{
+ padding:7px 9px;
+ font-size:12px;
+}
+.hidden{display:none!important}
+
+@media(max-width:800px){
+ .stats{grid-template-columns:repeat(2,1fr)}
+ .grid{grid-template-columns:1fr}
+ .motor{grid-template-columns:1fr}
+ .header{
+  flex-direction:column;
+  align-items:flex-start;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="header">
+<div class="logo">🏠 AJJRA SMART HOME</div>
+<div id="connection" class="status">
+📴 MQTT Not Connected
+</div>
+</div>
+</header>
+
+<main>
+
+<!-- HOME -->
+<section class="card">
+
+<h2>🏠 Homes</h2>
+
+<div id="homeTabs" class="tabs"></div>
+
+<div class="actions">
+
+<button class="btn primary" onclick="openHome()">
+➕ Add Home
+</button>
+
+<button class="btn danger" onclick="allOff()">
+🔴 ALL OFF
+</button>
+
+<button class="btn" onclick="openSettings()">
+⚙️ Settings
+</button>
+
+</div>
+
+</section>
+
+
+<!-- DASHBOARD -->
+<section class="card">
+
+<h2>📊 Dashboard</h2>
+
+<div class="stats">
+
+<div class="stat">
+<strong id="sHomes">0</strong>
+Homes
+</div>
+
+<div class="stat">
+<strong id="sNodes">0</strong>
+Nodes
+</div>
+
+<div class="stat">
+<strong id="sOnline">0</strong>
+Online
+</div>
+
+<div class="stat">
+<strong id="sDevices">0</strong>
+Devices
+</div>
+
+<div class="stat">
+<strong id="sOn">0</strong>
+ON
+</div>
+
+</div>
+
+</section>
+
+
+<!-- NODES -->
+<section class="card">
+
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+
+<h2>📡 NodeMCU</h2>
+
+<button class="btn primary" onclick="openNode()">
+➕ Add Node
+</button>
+
+</div>
+
+<div id="nodes" class="grid"></div>
+
+</section>
+
+
+<!-- ROOMS -->
+<section class="card">
+
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+
+<h2>🚪 Rooms</h2>
+
+<button class="btn primary" onclick="openRoom()">
+➕ Add Room
+</button>
+
+</div>
+
+<div id="rooms"></div>
+
+</section>
+
+
+<!-- MOTOR -->
+<section class="card">
+
+<h2>💧 Water Motor</h2>
+
+<div class="motor">
+
+<div class="motor-card">
+
+<h3 id="motorText">
+⚫ Motor OFF
+</h3>
+
+<button
+id="motorBtn"
+class="btn primary"
+onclick="motorToggle()">
+
+Turn ON
+
+</button>
+
+</div>
+
+<div class="motor-card">
+
+<h3>🛢️ Tank Level</h3>
+
+<div class="tank">
+<div id="tankFill" class="fill"></div>
+</div>
+
+<p id="tankText">0%</p>
+
+<div class="actions">
+
+<button
+class="btn small"
+onclick="changeTank(-10)">
+−10%
+</button>
+
+<button
+class="btn small"
+onclick="changeTank(10)">
++10%
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- LOG -->
+<section class="card">
+
+<h2>📜 Activity</h2>
+
+<div id="logs"></div>
+
+</section>
+
+</main>
+
+
+<footer>
+AJJRA Smart Home • NodeMCU • MQTT Cloud
+</footer>
+
+
+<!-- HOME MODAL -->
+<div id="homeModal" class="modal">
+
+<div class="modal-box">
+
+<h2>🏠 Add Home</h2>
+
+<input
+id="homeName"
+placeholder="My Home">
+
+<div class="modal-footer">
+
+<button class="btn"
+onclick="closeModal('homeModal')">
+Cancel
+</button>
+
+<button class="btn primary"
+onclick="saveHome()">
+Save
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- NODE MODAL -->
+<div id="nodeModal" class="modal">
+
+<div class="modal-box">
+
+<h2>📡 Add NodeMCU</h2>
+
+<label>Node Name</label>
+
+<input
+id="nodeName"
+placeholder="Ground Floor Node">
+
+<label>Node ID</label>
+
+<input
+id="nodeId"
+placeholder="NODE-01">
+
+<label>Node Key</label>
+
+<input
+id="nodeKey"
+placeholder="Unique security key">
+
+<label>Relay Channels</label>
+
+<input
+id="nodeChannels"
+type="number"
+min="1"
+max="64"
+value="8">
+
+<div class="modal-footer">
+
+<button class="btn"
+onclick="closeModal('nodeModal')">
+Cancel
+</button>
+
+<button class="btn primary"
+onclick="saveNode()">
+Save Node
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- ROOM MODAL -->
+<div id="roomModal" class="modal">
+
+<div class="modal-box">
+
+<h2>🚪 Add Room</h2>
+
+<input
+id="roomName"
+placeholder="Bedroom 1">
+
+<div class="modal-footer">
+
+<button class="btn"
+onclick="closeModal('roomModal')">
+Cancel
+</button>
+
+<button class="btn primary"
+onclick="saveRoom()">
+Save
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- DEVICE MODAL -->
+<div id="deviceModal" class="modal">
+
+<div class="modal-box">
+
+<h2>➕ Add Device</h2>
+
+<label>Device Name</label>
+
+<input
+id="deviceName"
+placeholder="Bedroom Light">
+
+<label>Room</label>
+
+<select id="deviceRoom"></select>
+
+<label>Device Type</label>
+
+<select id="deviceType">
+
+<option value="Light">💡 Light</option>
+<option value="Fan">🌀 Fan</option>
+<option value="AC">❄️ AC</option>
+<option value="Socket">🔌 Socket</option>
+<option value="TV">📺 TV</option>
+<option value="Motor">💧 Motor</option>
+<option value="Other">⚙️ Other</option>
+
+</select>
+
+<label>Relay Channel</label>
+
+<input
+id="deviceChannel"
+type="number"
+min="1"
+placeholder="1">
+
+<input
+id="selectedNode"
+type="hidden">
+
+<div class="modal-footer">
+
+<button class="btn"
+onclick="closeModal('deviceModal')">
+Cancel
+</button>
+
+<button class="btn primary"
+onclick="saveDevice()">
+Add Device
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<!-- SETTINGS MODAL -->
+<div id="settingsModal" class="modal">
+
+<div class="modal-box">
+
+<h2>⚙️ MQTT Cloud Settings</h2>
+
+<p class="muted">
+Credentials are stored only in this browser.
+For production, use secure token/backend authentication.
+</p>
+
+<label>MQTT WebSocket URL</label>
+
+<input
+id="mqttUrl"
+placeholder="wss://broker.example.com:8084/mqtt">
+
+<label>Username</label>
+
+<input
+id="mqttUser"
+placeholder="Username">
+
+<label>Password</label>
+
+<input
+id="mqttPass"
+type="password"
+placeholder="Password">
+
+<label>Home MQTT Prefix</label>
+
+<input
+id="mqttPrefix"
+value="ajjra">
+
+<div class="actions">
+
+<button class="btn"
+onclick="clearMQTT()">
+Clear
+</button>
+
+<button class="btn"
+onclick="closeModal('settingsModal')">
+Cancel
+</button>
+
+<button class="btn primary"
+onclick="saveSettings()">
+Save & Connect
+</button>
+
+</div>
+
+</div>
+</div>
+
+
+<script>
+
+/* =================================================
+   LOCAL DATABASE
+================================================= */
+
+const DB_KEY="AJJRA_SMART_HOME_V1";
+
+let db={
+ homes:[],
+ nodes:[],
+ rooms:[],
+ devices:[],
+ logs:[],
+ motor:false,
+ tank:0,
+ mqtt:{
+  url:"",
+  user:"",
+  pass:"",
+  prefix:"ajjra"
+ }
+};
+
+let currentHomeId=null;
+let mqttClient=null;
+
+
+/* =================================================
+   LOAD DATABASE
+================================================= */
+
+function loadDB(){
+
+ const saved=
+ localStorage.getItem(DB_KEY);
+
+ if(saved){
+
+  try{
+
+   db={
+    ...db,
+    ...JSON.parse(saved)
+   };
+
+  }catch(e){
+
+   console.error(e);
+
+  }
+
+ }
+
+ if(!db.mqtt){
+  db.mqtt={
+   url:"",
+   user:"",
+   pass:"",
+   prefix:"ajjra"
+  };
+ }
+
+ if(db.homes.length && !currentHomeId){
+
+  currentHomeId=
+  db.homes[0].id;
+
+ }
+
+}
+
+
+/* =================================================
+   SAVE DATABASE
+================================================= */
+
+function saveDB(){
+
+ localStorage.setItem(
+  DB_KEY,
+  JSON.stringify(db)
+ );
+
+}
+
+
+/* =================================================
+   ID
+================================================= */
+
+function uid(prefix="id"){
+
+ return prefix+
+ "_"+
+ Date.now()+
+ "_"+
+ Math.random()
+ .toString(36)
+ .slice(2,8);
+
+}
+
+
+/* =================================================
+   INIT
+================================================= */
+
+function init(){
+
+ loadDB();
+
+ render();
+
+ if(db.mqtt.url){
+
+  connectMQTT();
+
+ }
+
+}
+
+init();
+
+
+/* =================================================
+   CURRENT HOME
+================================================= */
+
+function currentHome(){
+
+ return db.homes.find(
+  h=>h.id===currentHomeId
+ );
+
+}
+
+
+/* =================================================
+   RENDER
+================================================= */
+
+function render(){
+
+ renderHomes();
+
+ renderStats();
+
+ renderNodes();
+
+ renderRooms();
+
+ renderLogs();
+
+ renderMotor();
+
+}
+
+
+/* =================================================
+   HOMES
+================================================= */
+
+function renderHomes(){
+
+ const el=
+ document.getElementById("homeTabs");
+
+ el.innerHTML="";
+
+ db.homes.forEach(home=>{
+
+  const b=
+  document.createElement("button");
+
+  b.className=
+  "tab "+
+  (
+   home.id===currentHomeId
+   ?"active":""
+  );
+
+  b.textContent=
+  "🏠 "+home.name;
+
+  b.onclick=()=>{
+
+   currentHomeId=
+   home.id;
+
+   saveDB();
+
+   render();
+
+  };
+
+  el.appendChild(b);
+
+ });
+
+ if(!db.homes.length){
+
+  el.innerHTML=
+  `<div class="empty">
+   No home added. Add your first home.
+   </div>`;
+
+ }
+
+}
+
+
+/* =================================================
+   STATS
+================================================= */
+
+function renderStats(){
+
+ const home=
+ currentHome();
+
+ const nodes=
+ db.nodes.filter(
+  n=>n.homeId===currentHomeId
+ );
+
+ const rooms=
+ db.rooms.filter(
+  r=>r.homeId===currentHomeId
+ );
+
+ const devices=
+ db.devices.filter(
+  d=>d.homeId===currentHomeId
+ );
+
+ document.getElementById("sHomes")
+ .textContent=db.homes.length;
+
+ document.getElementById("sNodes")
+ .textContent=nodes.length;
+
+ document.getElementById("sOnline")
+ .textContent=
+ nodes.filter(n=>n.online).length;
+
+ document.getElementById("sDevices")
+ .textContent=devices.length;
+
+ document.getElementById("sOn")
+ .textContent=
+ devices.filter(d=>d.state).length;
+
+}
+
+
+/* =================================================
+   NODES
+================================================= */
+
+function renderNodes(){
+
+ const el=
+ document.getElementById("nodes");
+
+ el.innerHTML="";
+
+ const nodes=
+ db.nodes.filter(
+  n=>n.homeId===currentHomeId
+ );
+
+ if(!nodes.length){
+
+  el.innerHTML=
+  `<div class="empty">
+  📡 No NodeMCU added.
+  </div>`;
+
+  return;
+
+ }
+
+ nodes.forEach(node=>{
+
+  const card=
+  document.createElement("div");
+
+  card.className="node";
+
+  const devices=
+  db.devices.filter(
+   d=>d.nodeId===node.id
+  );
+
+  card.innerHTML=`
+
+  <div class="node-head">
+
+   <div>
+
+    <div class="node-name">
+     📡 ${esc(node.name)}
+    </div>
+
+    <div class="muted">
+     ID: ${esc(node.nodeId)}
+    </div>
+
+    <div class="muted">
+     Channels: ${node.channels}
+    </div>
+
+   </div>
+
+   <div class="${
+    node.online
+    ?"online":"offline"
+   }">
+
+    ${
+     node.online
+     ?"● ONLINE"
+     :"● OFFLINE"
+    }
+
+   </div>
+
+  </div>
+
+  <div class="actions">
+
+   <button
+   class="btn primary small"
+   onclick="openDevice('${node.id}')">
+   ➕ Device
+   </button>
+
+   <button
+   class="btn small"
+   onclick="pingNode('${node.id}')">
+   📶 Ping
+   </button>
+
+   <button
+   class="btn danger small"
+   onclick="deleteNode('${node.id}')">
+   Delete
+   </button>
+
+  </div>
+
+  <div>
+
+  ${
+   devices.length
+   ?
+   devices.map(deviceHTML).join("")
+   :
+   `<div class="empty">
+   No devices
+   </div>`
+  }
+
+  </div>
+
+  `;
+
+  el.appendChild(card);
+
+ });
+
+}
+
+
+/* =================================================
+   DEVICE HTML
+================================================= */
+
+function deviceHTML(d){
+
+ return `
+
+ <div class="device">
+
+  <div class="device-info">
+
+   <div class="device-name">
+    ${icon(d.type)}
+    ${esc(d.name)}
+   </div>
+
+   <div class="muted">
+    ${esc(roomName(d.roomId))}
+    • Channel ${d.channel}
+   </div>
+
+   <div class="muted">
+    ${d.state?"🟢 ON":"⚫ OFF"}
+   </div>
+
+  </div>
+
+  <button
+  class="switch ${d.state?"on":""}"
+  onclick="toggleDevice('${d.id}')">
+  </button>
+
+  <button
+  class="btn danger small"
+  onclick="deleteDevice('${d.id}')">
+  ❌
+  </button>
+
+ </div>
+
+ `;
+
+}
+
+
+/* =================================================
+   ROOMS
+================================================= */
+
+function renderRooms(){
+
+ const el=
+ document.getElementById("rooms");
+
+ el.innerHTML="";
+
+ const rooms=
+ db.rooms.filter(
+  r=>r.homeId===currentHomeId
+ );
+
+ if(!rooms.length){
+
+  el.innerHTML=
+  `<div class="empty">
+   No rooms added.
+   </div>`;
+
+  return;
+
+ }
+
+ rooms.forEach(room=>{
+
+  const devices=
+  db.devices.filter(
+   d=>d.roomId===room.id
+  );
+
+  const div=
+  document.createElement("div");
+
+  div.className="room";
+
+  div.innerHTML=`
+
+  <h3>
+  🚪 ${esc(room.name)}
+  </h3>
+
+  <div class="muted">
+  ${devices.length} device(s)
+  </div>
+
+  ${
+   devices.map(deviceHTML).join("")
+  }
+
+  <div class="actions">
+
+   <button
+   class="btn danger small"
+   onclick="deleteRoom('${room.id}')">
+   Delete Room
+   </button>
+
+  </div>
+
+  `;
+
+  el.appendChild(div);
+
+ });
+
+}
+
+
+/* =================================================
+   LOG
+================================================= */
+
+function renderLogs(){
+
+ const el=
+ document.getElementById("logs");
+
+ el.innerHTML="";
+
+ const logs=
+ db.logs
+ .filter(
+  l=>l.homeId===currentHomeId
+ )
+ .slice(0,50);
+
+ if(!logs.length){
+
+  el.innerHTML=
+  `<div class="empty">
+   No activity.
+   </div>`;
+
+  return;
+
+ }
+
+ logs.forEach(l=>{
+
+  const div=
+  document.createElement("div");
+
+  div.className="log";
+
+  div.innerHTML=`
+
+   <b>${esc(l.action)}</b>
+   : ${esc(l.value)}
+
+   <div class="muted">
+   ${new Date(l.time).toLocaleString()}
+   </div>
+
+  `;
+
+  el.appendChild(div);
+
+ });
+
+}
+
+
+/* =================================================
+   MOTOR
+================================================= */
+
+function renderMotor(){
+
+ document.getElementById("motorText")
+ .textContent=
+ db.motor
+ ?"🟢 Motor ON"
+ :"⚫ Motor OFF";
+
+ document.getElementById("motorBtn")
+ .textContent=
+ db.motor
+ ?"Turn OFF"
+ :"Turn ON";
+
+ document.getElementById("tankFill")
+ .style.width=
+ db.tank+"%";
+
+ document.getElementById("tankText")
+ .textContent=
+ db.tank+"%";
+
+}
+
+
+/* =================================================
+   HOME
+================================================= */
+
+function openHome(){
+
+ document.getElementById(
+  "homeModal"
+ ).style.display="flex";
+
+}
+
+function saveHome(){
+
+ const name=
+ document.getElementById(
+  "homeName"
+ ).value.trim();
+
+ if(!name){
+
+  alert("Home name നൽകുക");
+
+  return;
+
+ }
+
+ const home={
+  id:uid("home"),
+  name:name
+ };
+
+ db.homes.push(home);
+
+ currentHomeId=home.id;
+
+ saveDB();
+
+ document.getElementById(
+  "homeName"
+ ).value="";
+
+ closeModal("homeModal");
+
+ render();
+
+}
+
+
+/* =================================================
+   NODE
+================================================= */
+
+function openNode(){
+
+ if(!currentHomeId){
+
+  alert(
+   "ആദ്യം Home add ചെയ്യുക."
+  );
+
+  return;
+
+ }
+
+ document.getElementById(
+  "nodeModal"
+ ).style.display="flex";
+
+}
+
+function saveNode(){
+
+ const name=
+ document.getElementById("nodeName")
+ .value.trim();
+
+ const nodeId=
+ document.getElementById("nodeId")
+ .value.trim();
+
+ const key=
+ document.getElementById("nodeKey")
+ .value.trim();
+
+ const channels=
+ Number(
+  document.getElementById(
+   "nodeChannels"
+  ).value
+ );
+
+ if(
+  !name||
+  !nodeId||
+  !key||
+  !channels
+ ){
+
+  alert(
+   "Node details പൂർണ്ണമായി നൽകുക."
+  );
+
+  return;
+
+ }
+
+ if(
+  db.nodes.some(
+   n=>n.nodeId===nodeId
+  )
+ ){
+
+  alert(
+   "ഈ Node ID ഇതിനകം ഉണ്ട്."
+  );
+
+  return;
+
+ }
+
+ db.nodes.push({
+
+  id:uid("node"),
+
+  homeId:currentHomeId,
+
+  name:name,
+
+  nodeId:nodeId,
+
+  key:key,
+
+  channels:channels,
+
+  online:false
+
+ });
+
+ saveDB();
+
+ closeModal("nodeModal");
+
+ clearNodeForm();
+
+ render();
+
+}
+
+
+/* =================================================
+   ROOM
+================================================= */
+
+function openRoom(){
+
+ if(!currentHomeId){
+
+  alert("ആദ്യം Home add ചെയ്യുക.");
+
+  return;
+
+ }
+
+ document.getElementById(
+  "roomModal"
+ ).style.display="flex";
+
+}
+
+function saveRoom(){
+
+ const name=
+ document.getElementById(
+  "roomName"
+ ).value.trim();
+
+ if(!name){
+
+  alert("Room name നൽകുക.");
+
+  return;
+
+ }
+
+ db.rooms.push({
+
+  id:uid("room"),
+
+  homeId:currentHomeId,
+
+  name:name
+
+ });
+
+ saveDB();
+
+ document.getElementById(
+  "roomName"
+ ).value="";
+
+ closeModal("roomModal");
+
+ render();
+
+}
+
+
+/* =================================================
+   DEVICE
+================================================= */
+
+function openDevice(nodeId){
+
+ const rooms=
+ db.rooms.filter(
+  r=>r.homeId===currentHomeId
+ );
+
+ if(!rooms.length){
+
+  alert(
+   "ആദ്യം Room add ചെയ്യുക."
+  );
+
+  return;
+
+ }
+
+ document.getElementById(
+  "selectedNode"
+ ).value=nodeId;
+
+ const select=
+ document.getElementById(
+  "deviceRoom"
+ );
+
+ select.innerHTML="";
+
+ rooms.forEach(r=>{
+
+  const option=
+  document.createElement("option");
+
+  option.value=r.id;
+
+  option.textContent=r.name;
+
+  select.appendChild(option);
+
+ });
+
+ document.getElementById(
+  "deviceModal"
+ ).style.display="flex";
+
+}
+
+
+function saveDevice(){
+
+ const nodeId=
+ document.getElementById(
+  "selectedNode"
+ ).value;
+
+ const node=
+ db.nodes.find(
+  n=>n.id===nodeId
+ );
+
+ if(!node)return;
+
+ const name=
+ document.getElementById(
+  "deviceName"
+ ).value.trim();
+
+ const roomId=
+ document.getElementById(
+  "deviceRoom"
+ ).value;
+
+ const type=
+ document.getElementById(
+  "deviceType"
+ ).value;
+
+ const channel=
+ Number(
+  document.getElementById(
+   "deviceChannel"
+  ).value
+ );
+
+ if(
+  !name||
+  !roomId||
+  !channel
+ ){
+
+  alert(
+   "Device details നൽകുക."
+  );
+
+  return;
+
+ }
+
+ if(
+  channel<1||
+  channel>node.channels
+ ){
+
+  alert(
+   `Channel 1-${node.channels} വരെ മാത്രം.`
+  );
+
+  return;
+
+ }
+
+ if(
+  db.devices.some(
+   d=>
+   d.nodeId===nodeId &&
+   Number(d.channel)===channel
+  )
+ ){
+
+  alert(
+   "ഈ relay channel ഇതിനകം ഉപയോഗിച്ചിട്ടുണ്ട്."
+  );
+
+  return;
+
+ }
+
+ db.devices.push({
+
+  id:uid("device"),
+
+  homeId:currentHomeId,
+
+  nodeId:nodeId,
+
+  roomId:roomId,
+
+  name:name,
+
+  type:type,
+
+  channel:channel,
+
+  state:false
+
+ });
+
+ saveDB();
+
+ clearDeviceForm();
+
+ closeModal("deviceModal");
+
+ render();
+
+}
+
+
+/* =================================================
+   DEVICE CONTROL
+================================================= */
+
+function toggleDevice(id){
+
+ const d=
+ db.devices.find(
+  x=>x.id===id
+ );
+
+ if(!d)return;
+
+ const node=
+ db.nodes.find(
+  n=>n.id===d.nodeId
+ );
+
+ if(!node)return;
+
+ const newState=!d.state;
+
+ if(
+  db.mqtt.url &&
+  (!mqttClient ||
+   !mqttClient.connected)
+ ){
+
+  alert(
+   "MQTT connected അല്ല."
+  );
+
+  connectMQTT();
+
+  return;
+
+ }
+
+ if(
+  db.mqtt.url &&
+  mqttClient &&
+  mqttClient.connected
+ ){
+
+  publishRelay(
+   node.nodeId,
+   d.channel,
+   newState
+  );
+
+ }
+
+ d.state=newState;
+
+ addLog(
+  d.name,
+  newState?"ON":"OFF"
+ );
+
+ saveDB();
+
+ render();
+
+}
+
+
+/* =================================================
+   MQTT
+================================================= */
+
+function connectMQTT(){
+
+ if(!db.mqtt.url){
+
+  setConnection(
+   "📴 MQTT Not Configured"
+  );
+
+  return;
+
+ }
+
+ try{
+
+  setConnection(
+   "🔄 Connecting..."
+  );
+
+  mqttClient=
+  mqtt.connect(
+   db.mqtt.url,
+   {
+    username:db.mqtt.user,
+    password:db.mqtt.pass,
+    reconnectPeriod:3000,
+    clean:true
+   }
+  );
+
+  mqttClient.on(
+   "connect",
+   ()=>{
+    setConnection(
+     "🟢 MQTT Connected"
+    );
+
+    subscribeNodes();
+   }
+  );
+
+  mqttClient.on(
+   "close",
+   ()=>{
+    setConnection(
+     "🔴 MQTT Disconnected"
+    );
+   }
+  );
+
+  mqttClient.on(
+   "error",
+   e=>{
+    console.error(e);
+
+    setConnection(
+     "⚠️ MQTT Error"
+    );
+   }
+  );
+
+  mqttClient.on(
+   "message",
+   onMessage
+  );
+
+ }catch(e){
+
+  console.error(e);
+
+  setConnection(
+   "⚠️ MQTT Error"
+  );
+
+ }
+
+}
+
+
+/* =================================================
+   MQTT SUBSCRIBE
+================================================= */
+
+function subscribeNodes(){
+
+ if(
+  !mqttClient ||
+  !mqttClient.connected
+ )return;
+
+ db.nodes
+ .filter(
+  n=>n.homeId===currentHomeId
+ )
+ .forEach(node=>{
+
+  mqttClient.subscribe(
+   `${db.mqtt.prefix}/node/${node.nodeId}/#`,
+   {qos:1}
+  );
+
+ });
+
+}
+
+
+/* =================================================
+   MQTT PUBLISH
+================================================= */
+
+function publishRelay(
+ nodeId,
+ channel,
+ state
+){
+
+ const topic=
+ `${db.mqtt.prefix}/node/${nodeId}/relay/${channel}/set`;
+
+ mqttClient.publish(
+  topic,
+  state?"ON":"OFF",
+  {qos:1}
+ );
+
+}
+
+
+/* =================================================
+   MQTT MESSAGE
+================================================= */
+
+function onMessage(
+ topic,
+ payload
+){
+
+ const msg=
+ payload.toString();
+
+ console.log(
+  "MQTT",
+  topic,
+  msg
+ );
+
+ const p=
+ topic.split("/");
+
+ /*
+ ajjra/node/NODE/relay/1/state
+ ajjra/node/NODE/status
+ */
+
+ if(
+  p.length>=4 &&
+  p[0]===db.mqtt.prefix &&
+  p[1]==="node"
+ ){
+
+  const nodeId=p[2];
+
+  const node=
+  db.nodes.find(
+   n=>n.nodeId===nodeId
+  );
+
+  if(!node)return;
+
+  node.online=true;
+
+  if(p[3]==="status"){
+
+   node.online=
+   msg==="ONLINE";
+
+   saveDB();
+
+   render();
+
+   return;
+
+  }
+
+  if(
+   p[3]==="relay" &&
+   p.length>=6
+  ){
+
+   const channel=
+   Number(p[4]);
+
+   const action=p[5];
+
+   if(action==="state"){
+
+    const d=
+    db.devices.find(
+     x=>
+     x.nodeId===node.id &&
+     Number(x.channel)===channel
+    );
+
+    if(d){
+
+     d.state=
+     msg==="ON"||
+     msg==="1"||
+     msg==="true";
+
+     saveDB();
+
+     render();
+
+    }
+
+   }
+
+  }
+
+ }
+
+}
+
+
+/* =================================================
+   PING
+================================================= */
+
+function pingNode(id){
+
+ const node=
+ db.nodes.find(
+  n=>n.id===id
+ );
+
+ if(!node)return;
+
+ if(
+  !mqttClient ||
+  !mqttClient.connected
+ ){
+
+  alert(
+   "MQTT connected അല്ല."
+  );
+
+  return;
+
+ }
+
+ mqttClient.publish(
+  `${db.mqtt.prefix}/node/${node.nodeId}/status/request`,
+  "STATUS",
+  {qos:1}
+ );
+
+}
+
+
+/* =================================================
+   ALL OFF
+================================================= */
+
+function allOff(){
+
+ const devices=
+ db.devices.filter(
+  d=>d.homeId===currentHomeId
+ );
+
+ devices.forEach(d=>{
+
+  const node=
+  db.nodes.find(
+   n=>n.id===d.nodeId
+  );
+
+  if(
+   node &&
+   mqttClient &&
+   mqttClient.connected
+  ){
+
+   publishRelay(
+    node.nodeId,
+    d.channel,
+    false
+   );
+
+  }
+
+  d.state=false;
+
+ });
+
+ db.motor=false;
+
+ addLog(
+  "SYSTEM",
+  "ALL DEVICES OFF"
+ );
+
+ saveDB();
+
+ render();
+
+}
+
+
+/* =================================================
+   MOTOR
+================================================= */
+
+function motorToggle(){
+
+ const motor=
+ db.devices.find(
+  d=>
+  d.homeId===currentHomeId &&
+  d.type==="Motor"
+ );
+
+ if(motor){
+
+  toggleDevice(
+   motor.id
+  );
+
+  db.motor=
+  motor.state;
+
+ }else{
+
+  db.motor=
+  !db.motor;
+
+  addLog(
+   "Water Motor",
+   db.motor?"ON":"OFF"
+  );
+
+  saveDB();
+
+  render();
+
+ }
+
+}
+
+
+/* =================================================
+   TANK
+================================================= */
+
+function changeTank(amount){
+
+ db.tank+=amount;
+
+ if(db.tank<0)
+  db.tank=0;
+
+ if(db.tank>100)
+  db.tank=100;
+
+ saveDB();
+
+ render();
+
+}
+
+
+/* =================================================
+   LOG
+================================================= */
+
+function addLog(
+ action,
+ value
+){
+
+ db.logs.unshift({
+
+  id:uid("log"),
+
+  homeId:currentHomeId,
+
+  action:action,
+
+  value:value,
+
+  time:
+  new Date().toISOString()
+
+ });
+
+ db.logs=
+ db.logs.slice(0,200);
+
+}
+
+
+/* =================================================
+   SETTINGS
+================================================= */
+
+function openSettings(){
+
+ document.getElementById(
+  "mqttUrl"
+ ).value=db.mqtt.url;
+
+ document.getElementById(
+  "mqttUser"
+ ).value=db.mqtt.user;
+
+ document.getElementById(
+  "mqttPass"
+ ).value=db.mqtt.pass;
+
+ document.getElementById(
+  "mqttPrefix"
+ ).value=db.mqtt.prefix||"ajjra";
+
+ document.getElementById(
+  "settingsModal"
+ ).style.display="flex";
+
+}
+
+
+function saveSettings(){
+
+ db.mqtt={
+
+  url:
+  document.getElementById(
+   "mqttUrl"
+  ).value.trim(),
+
+  user:
+  document.getElementById(
+   "mqttUser"
+  ).value.trim(),
+
+  pass:
+  document.getElementById(
+   "mqttPass"
+  ).value,
+
+  prefix:
+  document.getElementById(
+   "mqttPrefix"
+  ).value.trim()||
+  "ajjra"
+
+ };
+
+ saveDB();
+
+ closeModal(
+  "settingsModal"
+ );
+
+ connectMQTT();
+
+}
+
+
+function clearMQTT(){
+
+ db.mqtt={
+  url:"",
+  user:"",
+  pass:"",
+  prefix:"ajjra"
+ };
+
+ saveDB();
+
+ if(mqttClient){
+
+  mqttClient.end();
+
+  mqttClient=null;
+
+ }
+
+ setConnection(
+  "📴 MQTT Not Configured"
+ );
+
+}
+
+
+/* =================================================
+   DELETE
+================================================= */
+
+function deleteNode(id){
+
+ if(
+  !confirm(
+   "Node delete ചെയ്യണോ?"
+  )
+ )return;
+
+ db.devices=
+ db.devices.filter(
+  d=>d.nodeId!==id
+ );
+
+ db.nodes=
+ db.nodes.filter(
+  n=>n.id!==id
+ );
+
+ saveDB();
+
+ render();
+
+}
+
+
+function deleteDevice(id){
+
+ if(
+  !confirm(
+   "Device delete ചെയ്യണോ?"
+  )
+ )return;
+
+ db.devices=
+ db.devices.filter(
+  d=>d.id!==id
+ );
+
+ saveDB();
+
+ render();
+
+}
+
+
+function deleteRoom(id){
+
+ if(
+  !confirm(
+   "Room delete ചെയ്യണോ?"
+  )
+ )return;
+
+ db.devices=
+ db.devices.filter(
+  d=>d.roomId!==id
+ );
+
+ db.rooms=
+ db.rooms.filter(
+  r=>r.id!==id
+ );
+
+ saveDB();
+
+ render();
+
+}
+
+
+/* =================================================
+   HELPERS
+================================================= */
+
+function roomName(id){
+
+ const r=
+ db.rooms.find(
+  x=>x.id===id
+ );
+
+ return r?r.name:"No Room";
+
+}
+
+
+function icon(type){
+
+ const icons={
+  Light:"💡",
+  Fan:"🌀",
+  AC:"❄️",
+  Socket:"🔌",
+  TV:"📺",
+  Motor:"💧",
+  Other:"⚙️"
+ };
+
+ return icons[type]||"⚙️";
+
+}
+
+
+function esc(x){
+
+ return String(x??"")
+ .replaceAll("&","&amp;")
+ .replaceAll("<","&lt;")
+ .replaceAll(">","&gt;")
+ .replaceAll('"',"&quot;")
+ .replaceAll("'","&#039;");
+
+}
+
+
+function setConnection(text){
+
+ document.getElementById(
+  "connection"
+ ).textContent=text;
+
+}
+
+
+function closeModal(id){
+
+ document.getElementById(
+  id
+ ).style.display="none";
+
+}
+
+
+function clearNodeForm(){
+
+ ["nodeName","nodeId","nodeKey"]
+ .forEach(id=>{
+  document.getElementById(id).value="";
+ });
+
+ document.getElementById(
+  "nodeChannels"
+ ).value=8;
+
+}
+
+
+function clearDeviceForm(){
+
+ document.getElementById(
+  "deviceName"
+ ).value="";
+
+ document.getElementById(
+  "deviceChannel"
+ ).value="";
+
+}
+
+
+/* =================================================
+   EXPORT / IMPORT
+================================================= */
+
+function exportData(){
+
+ const blob=
+ new Blob(
+  [JSON.stringify(db,null,2)],
+  {type:"application/json"}
+ );
+
+ const a=
+ document.createElement("a");
+
+ a.href=
+ URL.createObjectURL(blob);
+
+ a.download=
+ "ajjra-smart-home-backup.json";
+
+ a.click();
+
+ URL.revokeObjectURL(
+  a.href
+ );
+
+}
+
+
+/* =================================================
+   KEYBOARD / PAGE
+================================================= */
+
+window.addEventListener(
+ "beforeunload",
+ ()=>{
+  saveDB();
+ }
+);
+
+</script>
+
+</body>
+</html>
